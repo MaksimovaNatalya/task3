@@ -1,10 +1,10 @@
-package com.epam.mathlab;
+package com.epam.calculator;
 
 import java.util.ArrayList;
 import java.util.List;
 
 
-public class Mathlab {
+public class Calculator {
     /*------------------------------------------------------------------
      * PARSER RULES
      *------------------------------------------------------------------*/
@@ -17,42 +17,40 @@ public class Mathlab {
 //
 //    factor : NUMBER | '(' expr ')' ;
 
-
-    public static void main(String[] args) {
-        String expressionText = "122 - 34 - 3* (55 + 5* (3 - 2)) * 2";
-        List<Lexeme> lexemes = lexAnalyze(expressionText);
+    public int calculateExpression(String expression) {
+        List<Lexeme> lexemes = lexAnalyze(expression);
         LexemeBuffer lexemeBuffer = new LexemeBuffer(lexemes);
-        System.out.println(expr(lexemeBuffer));
+        return getExpressionInBrackets(lexemeBuffer);
     }
 
-    public static List<Lexeme> lexAnalyze(String expText) {
+    private static List<Lexeme> lexAnalyze(String expression) {
         ArrayList<Lexeme> lexemes = new ArrayList<>();
         int position = 0;
-        while (position< expText.length()) {
-            char character = expText.charAt(position);
+        while (position < expression.length()) {
+            char character = expression.charAt(position);
             switch (character) {
                 case '(':
-                    lexemes.add(new Lexeme(LexemeType.LEFT_BRACKET, character));
+                    lexemes.add(Lexeme.makeALexeme(LexemeType.LEFT_BRACKET, character));
                     position++;
                     continue;
                 case ')':
-                    lexemes.add(new Lexeme(LexemeType.RIGHT_BRACKET, character));
+                    lexemes.add(Lexeme.makeALexeme(LexemeType.RIGHT_BRACKET, character));
                     position++;
                     continue;
                 case '+':
-                    lexemes.add(new Lexeme(LexemeType.OP_PLUS, character));
+                    lexemes.add(Lexeme.makeALexeme(LexemeType.OP_PLUS, character));
                     position++;
                     continue;
                 case '-':
-                    lexemes.add(new Lexeme(LexemeType.OP_MINUS, character));
+                    lexemes.add(Lexeme.makeALexeme(LexemeType.OP_MINUS, character));
                     position++;
                     continue;
                 case '*':
-                    lexemes.add(new Lexeme(LexemeType.OP_MUL, character));
+                    lexemes.add(Lexeme.makeALexeme(LexemeType.OP_MUL, character));
                     position++;
                     continue;
                 case '/':
-                    lexemes.add(new Lexeme(LexemeType.OP_DIV, character));
+                    lexemes.add(Lexeme.makeALexeme(LexemeType.OP_DIV, character));
                     position++;
                     continue;
                 default:
@@ -61,12 +59,12 @@ public class Mathlab {
                         do {
                             sb.append(character);
                             position++;
-                            if (position >= expText.length()) {
+                            if (position >= expression.length()) {
                                 break;
                             }
-                            character = expText.charAt(position);
+                            character = expression.charAt(position);
                         } while (character <= '9' && character >= '0');
-                        lexemes.add(new Lexeme(LexemeType.NUMBER, sb.toString()));
+                        lexemes.add(Lexeme.makeALexeme(LexemeType.NUMBER, sb.toString()));
                     } else {
                         if (character != ' ') {
                             throw new RuntimeException("Unexpected character: " + character);
@@ -75,52 +73,52 @@ public class Mathlab {
                     }
             }
         }
-        lexemes.add(new Lexeme(LexemeType.EOF, ""));
+        lexemes.add(Lexeme.makeALexeme(LexemeType.EOF, ""));
         return lexemes;
     }
 
-    public static int expr(LexemeBuffer lexemes) {
+    private static int getExpressionInBrackets(LexemeBuffer lexemes) {
         Lexeme lexeme = lexemes.next();
-        if (lexeme.type == LexemeType.EOF) {
+        if (lexeme.getType() == LexemeType.EOF) {
             return 0;
         } else {
             lexemes.back();
-            return plusminus(lexemes);
+            return getPlusMinusResult(lexemes);
         }
     }
 
-    public static int plusminus(LexemeBuffer lexemes) {
-        int value = multdiv(lexemes);
+    private static int getPlusMinusResult(LexemeBuffer lexemes) {
+        int value = getMulDivResult(lexemes);
         while (true) {
             Lexeme lexeme = lexemes.next();
-            switch (lexeme.type) {
+            switch (lexeme.getType()) {
                 case OP_PLUS:
-                    value += multdiv(lexemes);
+                    value += getMulDivResult(lexemes);
                     break;
                 case OP_MINUS:
-                    value -= multdiv(lexemes);
+                    value -= getMulDivResult(lexemes);
                     break;
                 case EOF:
                 case RIGHT_BRACKET:
                     lexemes.back();
                     return value;
                 default:
-                    throw new RuntimeException("Unexpected token: " + lexeme.value
+                    throw new RuntimeException("Unexpected token: " + lexeme.getValue()
                             + " at position: " + lexemes.getPos());
             }
         }
     }
 
-    public static int multdiv(LexemeBuffer lexemes) {
-        int value = factor(lexemes);
+    private static int getMulDivResult(LexemeBuffer lexemes) {
+        int value = getFactor(lexemes);
         while (true) {
             Lexeme lexeme = lexemes.next();
-            switch (lexeme.type) {
+            switch (lexeme.getType()) {
                 case OP_MUL:
-                    value *= factor(lexemes);
+                    value *= getFactor(lexemes);
                     break;
                 case OP_DIV:
-                    value /= factor(lexemes);
+                    value /= getFactor(lexemes);
                     break;
                 case EOF:
                 case RIGHT_BRACKET:
@@ -129,27 +127,27 @@ public class Mathlab {
                     lexemes.back();
                     return value;
                 default:
-                    throw new RuntimeException("Unexpected token: " + lexeme.value
+                    throw new RuntimeException("Unexpected token: " + lexeme.getValue()
                             + " at position: " + lexemes.getPos());
             }
         }
     }
 
-    public static int factor(LexemeBuffer lexemes) {
+    private static int getFactor(LexemeBuffer lexemes) {
         Lexeme lexeme = lexemes.next();
-        switch (lexeme.type) {
+        switch (lexeme.getType()) {
             case NUMBER:
-                return Integer.parseInt(lexeme.value);
+                return Integer.parseInt(lexeme.getValue());
             case LEFT_BRACKET:
-                int value = plusminus(lexemes);
+                int value = getPlusMinusResult(lexemes);
                 lexeme = lexemes.next();
-                if (lexeme.type != LexemeType.RIGHT_BRACKET) {
-                    throw new RuntimeException("Unexpected token: " + lexeme.value
+                if (lexeme.getType() != LexemeType.RIGHT_BRACKET) {
+                    throw new RuntimeException("Unexpected token: " + lexeme.getValue()
                             + " at position: " + lexemes.getPos());
                 }
                 return value;
             default:
-                throw new RuntimeException("Unexpected token: " + lexeme.value
+                throw new RuntimeException("Unexpected token: " + lexeme.getValue()
                         + " at position: " + lexemes.getPos());
         }
     }
